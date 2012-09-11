@@ -2,6 +2,9 @@ package fr.tse.lt2c.satin;
 
 import java.io.File;
 
+import java.text.DecimalFormat;
+
+
 import org.gearman.GearmanClient;
 
 import org.json.simple.JSONObject;
@@ -261,4 +264,58 @@ public class DataWorkers {
 			logger.error("BUG: {}", e);
 		}
 	}
+	
+	/**
+	 * Send the timecode into seconds
+	 * @param timecode
+	 * @return double
+	 */
+	protected double timecodeToSeconds(String timecode) {
+		try{
+			logger.info("IN TIMECODETOSECONDS");
+			String[] splitTimecode = timecode.split(":");
+
+			if(splitTimecode.length == 4) {
+				double seconds = Integer.parseInt(splitTimecode[0]) * 3600 + 
+						Integer.parseInt(splitTimecode[1]) * 60 + 
+						Integer.parseInt(splitTimecode[2]) + 
+						Integer.parseInt(splitTimecode[3]) * 0.01;
+				return seconds;
+			}
+			else {
+				logger.error("The timecode received is not well formed: {}", timecode);
+				return 0;
+			}
+		}
+		catch(Exception e) {
+			logger.error("BUG: {}", e);
+			return 0;
+		}
+	}
+	
+	/**
+	 * Return a String of a rounded double
+	 * @param value to convert
+	 * @param nbDigits after comma
+	 * @return String
+	 */
+	protected String roundDouble(double value, int nbDigits) {
+		try {
+			DecimalFormat df = new DecimalFormat();
+			df.setMaximumFractionDigits(nbDigits);
+			df.setMinimumFractionDigits(nbDigits);
+			df.setDecimalSeparatorAlwaysShown(true);
+			String s = df.format(value);
+			return s;
+		}
+		catch(Exception e) {
+			logger.error("BUG: {}", e);
+			return null;
+		}
+	}
+	
+	
+	
+	
+	
 }
