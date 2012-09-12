@@ -73,6 +73,28 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 
 			this.createShotDurationArray();
 
+			// Find the video name
+			this.m_fileName = super.findInMongoDB("_id", this.m_movieId, "fileName");
+			this.m_fileExtension = super.findInMongoDB("_id", this.m_movieId, "fileExtension");
+			this.m_videoName =  this.m_fileName + "." + this.m_fileExtension;
+
+			// Create the folders if they don't exist yet
+			this.m_folderMovieCompressed = this.m_pathFolderVideos + "/" + this.m_fileName;
+			super.createFolder(this.m_folderMovieCompressed);
+			this.m_folderTraditional = this.m_folderMovieCompressed + "/traditional";
+			super.createFolder(this.m_folderTraditional);
+			this.m_folderAdapted = this.m_folderMovieCompressed + "/adapted";
+			super.createFolder(this.m_folderAdapted);
+
+			// Call the traditional bash
+			this.traditionalCompression();
+
+			//Call the bash with ShotDetection adaptation
+			this.adaptedCompression();
+
+			// Call m3u8GenerationWorker
+			this.callJobM3u8Generation();
+
 		}
 		catch(Exception e) {
 			logger.error("BUG: {}", e);
@@ -106,25 +128,6 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 
 			// Save it in the database
 			super.addInMongoDB("_id", this.m_movieId, "shotDuration", this.m_shotDuration);
-
-			// Find the video name
-			this.m_fileName = super.findInMongoDB("_id", this.m_movieId, "fileName");
-			this.m_fileExtension = super.findInMongoDB("_id", this.m_movieId, "fileExtension");
-			this.m_videoName =  this.m_fileName + "." + this.m_fileExtension;
-
-			// Create the folders if they don't exist yet
-			this.m_folderMovieCompressed = this.m_pathFolderVideos + "/" + this.m_fileName;
-			super.createFolder(this.m_folderMovieCompressed);
-			this.m_folderTraditional = this.m_folderMovieCompressed + "/traditional";
-			super.createFolder(this.m_folderTraditional);
-			this.m_folderAdapted = this.m_folderMovieCompressed + "/adapted";
-			super.createFolder(this.m_folderAdapted);
-
-			// Call the traditional bash
-			this.traditionalCompression();
-
-			//Call the bash with ShotDetection adaptation
-			this.adaptedCompression();
 		}
 		catch(Exception e) {
 			logger.error("BUG: {}", e);
@@ -300,7 +303,29 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 		catch(Exception e) {
 			logger.error("BUG: {}", e);
 		}
-
-
 	}
+
+		/**
+		 * Call the job "m3u8Generation"
+		 * Called when Shot Detection is finished
+		 */
+		@SuppressWarnings("unchecked")
+		private void callJobM3u8Generation() {
+			try {
+				logger.info("IN CALLM3U8GENERATION");
+				
+				// Prepare data to send
+				JSONObject jsonObj = new JSONObject();
+				jsonObj.put("_id", this.m_movieId);
+				byte[] dataToSend = jsonObj.toJSONString().getBytes();
+				
+				// Call the gearman job "videoCompression"
+				m_client.submitJob("m3u8Generation", dataToSend);
+			}
+			catch(Exception e) {
+				logger.error("BUG: {}", e);
+			}
+		}
+
+	
 }
