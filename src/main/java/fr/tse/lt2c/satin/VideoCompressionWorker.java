@@ -262,6 +262,8 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 				shotToUse_1++;
 			}
 
+			super.addInMongoDB("_id", this.m_movieId, "shotToUse1", shotToUse_1);
+			
 			this.bash(
 					super.m_pathFolderVideos + "/" + this.m_videoName, 
 					"0", 
@@ -276,6 +278,8 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 			while(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString()) <= 20) {
 				shotToUse_2++;
 			}
+			
+			super.addInMongoDB("_id", this.m_movieId, "shotToUse2", shotToUse_2);
 
 			double durationShot2 =  
 					super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString()) - 
@@ -316,7 +320,7 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 				
 				// Prepare data to send
 				JSONObject jsonObj = new JSONObject();
-				jsonObj.put("_id", this.m_movieId);
+				jsonObj.put("_id", this.m_movieId.toString());
 				byte[] dataToSend = jsonObj.toJSONString().getBytes();
 				
 				// Call the gearman job "videoCompression"
