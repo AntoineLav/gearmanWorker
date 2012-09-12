@@ -122,7 +122,7 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 
 			// Call the traditional bash
 			this.traditionalCompression();
-			
+
 			//Call the bash with ShotDetection adaptation
 			this.adaptedCompression();
 		}
@@ -162,7 +162,7 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 			logger.error("BUG: {}", e);
 		}
 	}
-	
+
 	/**
 	 * Bash command to launch the compression
 	 * @param videoPath
@@ -193,7 +193,7 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 			logger.error("BUG: {}", e);
 		}
 	}
-	
+
 	/**
 	 * Bash command to launch the compression
 	 * @param videoPath
@@ -241,58 +241,66 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 			while((c = shellIn.read()) != -1) {
 				System.out.write(c);
 			}
-			
+
 		}
 		catch(Exception e) {
 			logger.error("BUG: {}", e);
-			
+
 		}
 	}
-	
+
 	private void adaptedCompression() {
-		
-		int shotToUse_1 = 0;
-		while(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString()) <= 10) {
-			shotToUse_1++;
+
+		try {
+			logger.info("IN ADAPTEDCOMPRESSION");
+
+			int shotToUse_1 = 0;
+			while(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString()) <= 10) {
+				shotToUse_1++;
+			}
+
+			this.bash(
+					super.m_pathFolderVideos + "/" + this.m_videoName, 
+					"0", 
+					String.valueOf(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString())), 
+					"1280",
+					"720", 
+					"4500", 
+					this.m_folderAdapted + "/" + this.m_videoName + "_adapt_0.ts" 
+					);
+
+			int shotToUse_2 = shotToUse_1;
+			while(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString()) <= 20) {
+				shotToUse_2++;
+			}
+
+			double durationShot2 =  
+					super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString()) - 
+					super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString());
+
+			this.bash(
+					super.m_pathFolderVideos + "/" + this.m_videoName, 
+					String.valueOf(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString())), 
+					String.valueOf(durationShot2), 
+					"1280",
+					"720", 
+					"1500", 
+					this.m_folderAdapted + "/" + this.m_videoName + "_adapt_1.ts" 
+					);
+
+			this.bash(
+					super.m_pathFolderVideos + "/" + this.m_videoName, 
+					String.valueOf(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString())), 
+					"640",
+					"360", 
+					"600", 
+					this.m_folderAdapted + "/" + this.m_videoName + "_adapt_2.ts" 
+					);
 		}
-		
-		this.bash(
-				super.m_pathFolderVideos + "/" + this.m_videoName, 
-				"0", 
-				String.valueOf(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString())), 
-				"1280",
-				"720", 
-				"4500", 
-				this.m_folderAdapted + "/" + this.m_videoName + "_adapt_0.ts" 
-				);
-		
-		int shotToUse_2 = shotToUse_1;
-		while(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString()) <= 20) {
-			shotToUse_2++;
+		catch(Exception e) {
+			logger.error("BUG: {}", e);
 		}
-		
-		double durationShot2 =  
-				super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString()) - 
-				super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString());
-		
-		this.bash(
-				super.m_pathFolderVideos + "/" + this.m_videoName, 
-				String.valueOf(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString())), 
-				String.valueOf(durationShot2), 
-				"1280",
-				"720", 
-				"1500", 
-				this.m_folderAdapted + "/" + this.m_videoName + "_adapt_1.ts" 
-				);
-		
-		this.bash(
-				super.m_pathFolderVideos + "/" + this.m_videoName, 
-				String.valueOf(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString())), 
-				"640",
-				"360", 
-				"600", 
-				this.m_folderAdapted + "/" + this.m_videoName + "_adapt_2.ts" 
-				);
-		
+
+
 	}
 }

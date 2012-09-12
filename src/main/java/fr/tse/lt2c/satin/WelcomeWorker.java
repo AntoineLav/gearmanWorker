@@ -19,7 +19,7 @@ public class WelcomeWorker extends DataWorkers {
 	private static final String m_FUNCTION_NAME_1 = "shotDetection";
 	private static final String m_FUNCTION_NAME_2 = "deleteMovie";
 	private static final String m_FUNCTION_NAME_3 = "videoCompression";
-	//public static final String FUNCTION_NAME_3 = "m3u8Generation";
+	public static final String m_FUNCTION_NAME_4 = "m3u8Generation";
 
 	/** The host address of the job server */
 	private static final String m_HOST = "localhost";
@@ -69,6 +69,7 @@ public class WelcomeWorker extends DataWorkers {
 			m_worker.addFunction(m_FUNCTION_NAME_1, new ShotDetectionWorker());
 			m_worker.addFunction(m_FUNCTION_NAME_2, new DeleteMovieWorker());
 			m_worker.addFunction(m_FUNCTION_NAME_3, new VideoCompressionWorker());
+			m_worker.addFunction(m_FUNCTION_NAME_4, new M3u8GenerationWorker());
 
 			/*
 			 *  Tell the worker that it may communicate with the job server
