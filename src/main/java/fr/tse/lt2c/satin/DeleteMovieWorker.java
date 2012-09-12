@@ -51,8 +51,12 @@ public class DeleteMovieWorker extends DataWorkers implements GearmanFunction{
 			this.m_videoName = super.findInMongoDB("_id", this.m_videoIdOid, "fileName");
 
 			// Delete the Movie folder in VideoShotImages
-			super.deleteFolder(this.m_pathFolderShotImages + "/" + this.m_videoName);
+			super.deleteFolder(super.m_pathFolderShotImages + "/" + this.m_videoName);
 			logger.debug("Dir to delete: {}/{} ", this.m_pathFolderShotImages, this.m_videoName);
+			
+			// Delete the Movie Compressed folder
+			super.deleteFolder(super.m_pathFolderVideos + "/" + this.m_videoName);
+			logger.debug("Dir to delete: {}/{} ", super.m_pathFolderVideos, this.m_videoName);
 			
 			// Delete the movie from the DB
 			super.deleteInMongoDB("_id", this.m_videoIdOid);

@@ -106,20 +106,25 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 
 			// Save it in the database
 			super.addInMongoDB("_id", this.m_movieId, "shotDuration", this.m_shotDuration);
-			
+
 			// Find the video name
 			this.m_fileName = super.findInMongoDB("_id", this.m_movieId, "fileName");
 			this.m_fileExtension = super.findInMongoDB("_id", this.m_movieId, "fileExtension");
 			this.m_videoName =  this.m_fileName + "." + this.m_fileExtension;
-			
+
 			// Create the folders if they don't exist yet
 			this.m_folderMovieCompressed = this.m_pathFolderVideos + "/" + this.m_fileName;
 			super.createFolder(this.m_folderMovieCompressed);
-			this.m_folderTraditional = this.m_folderMovieCompressed + "/traditional"; 
-			
+			this.m_folderTraditional = this.m_folderMovieCompressed + "/traditional";
+			super.createFolder(this.m_folderTraditional);
+			this.m_folderAdapted = this.m_folderMovieCompressed + "/adapted";
+			super.createFolder(this.m_folderAdapted);
+
 			// Call the traditional bash
 			this.traditionalCompression();
 			
+			//Call the bash with ShotDetection adaptation
+			this.adaptedCompression();
 		}
 		catch(Exception e) {
 			logger.error("BUG: {}", e);
@@ -128,15 +133,90 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 	}
 
 	/**
-	 * Call the traditionnal conversion for HTTP Live Streaming (quality adaptation every 10 seconds)
+	 * Call the traditional conversion for HTTP Live Streaming (quality adaptation every 10 seconds)
 	 */
 	private void traditionalCompression() {
 		try {
 			this.bash(super.m_pathFolderVideos + "/" + this.m_videoName,
 					"0",
 					"10",
-					"6000",
-					this.m_folderMovieCompressed + "/" + this.m_fileName + "_0.ts");
+					"1280",
+					"960",
+					"4500",
+					this.m_folderTraditional + "/" + this.m_fileName + "_trad_0.ts");
+			this.bash(super.m_pathFolderVideos + "/" + this.m_videoName,
+					"10",
+					"10",
+					"1280",
+					"960",
+					"1500",
+					this.m_folderTraditional + "/" + this.m_fileName + "_trad_1.ts");
+			this.bash(super.m_pathFolderVideos + "/" + this.m_videoName,
+					"20",
+					"640",
+					"480",
+					"600",
+					this.m_folderTraditional + "/" + this.m_fileName + "_trad_2.ts");
+		}
+		catch(Exception e) {
+			logger.error("BUG: {}", e);
+		}
+	}
+	
+	/**
+	 * Bash command to launch the compression
+	 * @param videoPath
+	 * @param beginTime
+	 * @param xResolution
+	 * @param yResolution
+	 * @param bitrate
+	 * @param destination
+	 */
+	private void bash(String videoPath, String beginTime, String shotDuration, String xResolution, String yResolution, String bitrate, String destination) {
+		try {
+			logger.info("IN BASH");
+
+			String cmd = "ffmpeg -threads 4 -i " + videoPath +
+					" -ss " + beginTime + 
+					" -t " + shotDuration +
+					" -s " + xResolution + "x" + yResolution +
+					" -b " + bitrate + "k " +
+					" " + destination;
+			// Debug
+			logger.debug("bash command: {}", cmd);
+
+			// Call the bash
+			this.execBash(cmd);
+
+		}
+		catch(Exception e) {
+			logger.error("BUG: {}", e);
+		}
+	}
+	
+	/**
+	 * Bash command to launch the compression
+	 * @param videoPath
+	 * @param beginTime
+	 * @param xResolution
+	 * @param yResolution
+	 * @param bitrate
+	 * @param destination
+	 */
+	private void bash(String videoPath, String beginTime, String xResolution, String yResolution, String bitrate, String destination) {
+		try {
+			logger.info("IN BASH");
+
+			String cmd = "ffmpeg -threads 4 -i " + videoPath +
+					" -ss " + beginTime + 
+					" -s " + xResolution + "x" + yResolution +
+					" -b " + bitrate + "k " +
+					" " + destination;
+			// Debug
+			logger.debug("bash command: {}", cmd);
+
+			// Call the bash
+			this.execBash(cmd);
 		}
 		catch(Exception e) {
 			logger.error("BUG: {}", e);
@@ -144,26 +224,14 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 	}
 
 	/**
-	 * Bash command to launch the compression
-	 * @param videoPath
-	 * @param beginTime
-	 * @param shotDuration
-	 * @param bitrate
-	 * @param destination
+	 * Execute the bash command
+	 * @param cmd String of the command to to execute
 	 */
 	@SuppressWarnings("unused")
-	private void bash(String videoPath, String beginTime, String shotDuration, String bitrate, String destination) {
+	private void execBash(String cmd) {
 		try {
-			logger.info("IN BASH");
-			
-			String cmd = "ffmpeg -threads 4 -i " + videoPath +
-					" -ss " + beginTime + 
-					" -t " + shotDuration + 
-					" -b " + bitrate + "k " +
-					" " + destination;
-			// Debug
-			logger.debug("bash command: {}", cmd);
-			
+			logger.info("IN EXECBASH");
+
 			ProcessBuilder pb = new ProcessBuilder("zsh", "-c", cmd);
 			pb.redirectErrorStream(true);
 			Process shell = pb.start();
@@ -173,10 +241,58 @@ public class VideoCompressionWorker extends DataWorkers implements GearmanFuncti
 			while((c = shellIn.read()) != -1) {
 				System.out.write(c);
 			}
+			
 		}
 		catch(Exception e) {
 			logger.error("BUG: {}", e);
+			
 		}
 	}
-
+	
+	private void adaptedCompression() {
+		
+		int shotToUse_1 = 0;
+		while(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString()) <= 10) {
+			shotToUse_1++;
+		}
+		
+		this.bash(
+				super.m_pathFolderVideos + "/" + this.m_videoName, 
+				"0", 
+				String.valueOf(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString())), 
+				"1280",
+				"720", 
+				"4500", 
+				this.m_folderAdapted + "/" + this.m_videoName + "_adapt_0.ts" 
+				);
+		
+		int shotToUse_2 = shotToUse_1;
+		while(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString()) <= 20) {
+			shotToUse_2++;
+		}
+		
+		double durationShot2 =  
+				super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString()) - 
+				super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString());
+		
+		this.bash(
+				super.m_pathFolderVideos + "/" + this.m_videoName, 
+				String.valueOf(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_1).toString())), 
+				String.valueOf(durationShot2), 
+				"1280",
+				"720", 
+				"1500", 
+				this.m_folderAdapted + "/" + this.m_videoName + "_adapt_1.ts" 
+				);
+		
+		this.bash(
+				super.m_pathFolderVideos + "/" + this.m_videoName, 
+				String.valueOf(super.timecodeToSeconds(this.m_arrayShot.get(shotToUse_2).toString())), 
+				"640",
+				"360", 
+				"600", 
+				this.m_folderAdapted + "/" + this.m_videoName + "_adapt_2.ts" 
+				);
+		
+	}
 }
